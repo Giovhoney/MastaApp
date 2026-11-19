@@ -27,3 +27,11 @@ The current UI reads/writes only browser localStorage, with unverified employee 
 `npm ci && npm run lint && npx tsc --noEmit && npm run test && npm run build`
 
 Health endpoint: `GET /api/health` (liveness only; not database readiness).
+
+## Temporary database inventory for testing
+
+After a real PostgreSQL `DATABASE_URL` has been securely configured and the Prisma schema migrated, run `PILOT_DATA_CONFIRM=YES_TEST_DATA_ONLY npm run db:pilot:seed` in a secure environment. This inserts six fictional `TEST-PILOT-` pails, receipt movements, and a clearly labeled test employee. It refuses to overwrite occupied positions or seed twice.
+
+Before importing actual inventory, run `PILOT_DATA_CONFIRM=YES_TEST_DATA_ONLY npm run db:pilot:clear`. It deletes **only** `TEST-PILOT-` pails and their linked transactions. It never clears real stock, ink master names, or users. The script is not an inventory import or a substitute for a transactional server API.
+
+**Database connection is not yet configured.** Never paste the PostgreSQL connection URL into a chat or commit it to GitHub; configure it as a Hostinger secret/environment variable. The current browser demo remains isolated from the database until a shared server API and employee identification are implemented.

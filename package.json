@@ -11,7 +11,9 @@
     "db:validate": "prisma validate",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "db:pilot:seed": "tsx prisma/pilot-data.ts seed",
+    "db:pilot:clear": "tsx prisma/pilot-data.ts clear"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
