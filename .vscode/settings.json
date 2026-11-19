@@ -1,0 +1,14 @@
+{
+  "sqltools.connections": [
+    {
+      "name": "MastaApp Local MySQL",
+      "driver": "MySQL",
+      "server": "127.0.0.1",
+      "port": 3307,
+      "database": "mastaapp_local",
+      "username": "mastaapp_local",
+      "askForPassword": true,
+      "connectionTimeout": 15
+    }
+  ]
+}
