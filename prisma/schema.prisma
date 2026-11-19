@@ -80,7 +80,7 @@ model AppUser {
   checkouts  InkCheckout[]
   movements  InventoryMovement[]
   createdAt  DateTime    @default(now())
-  // Authentication identity intentionally deferred.
+  credential PilotCredential?
 }
 
 model InkCheckout {
@@ -128,4 +128,12 @@ model PilotPailDetails {
   currentWeightKg Float
   machine String?
   updatedAt DateTime @updatedAt
+}
+
+model PilotCredential {
+  userId String @id
+  user AppUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstNameKey String @unique @db.VarChar(60)
+  pinHash String @db.VarChar(256)
+  createdAt DateTime @default(now())
 }

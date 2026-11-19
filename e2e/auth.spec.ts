@@ -8,15 +8,16 @@ test('inventory and write endpoints require a signed-in session',async({request}
 });
 test('login rejects invalid credentials, prevents cross-origin writes, and logout revokes browser access',async({page})=>{
  await page.goto('/');
- await expect(page.getByRole('heading',{name:'MastaApp Pilot Sign In'})).toBeVisible();
- await page.getByRole('textbox',{name:'Employee ID'}).fill('TEST-INVALID');
- await page.getByLabel('Password').fill('incorrect');
- await page.getByRole('button',{name:'Sign in'}).click();
- await expect(page.getByText('Invalid employee ID or password')).toContainText('Invalid');
+ await expect(page.getByRole('heading',{name:'Create your account'})).toBeVisible();
+ await page.getByRole('textbox',{name:'First name'}).fill('Invalidname');
+ await page.getByLabel('6-digit PIN').fill('111111');
+ await page.getByRole('tab',{name:'Sign in'}).click();
+ await page.getByRole('button',{name:'Sign in',exact:true}).last().click();
+ await expect(page.getByText('Incorrect first name or PIN')).toBeVisible();
  await signIn(page);
  const csrf=await page.request.post('/api/pilot',{data:{action:'PURGE',batchId:'TEST-NONEXISTENT',reason:'blocked'},headers:{origin:'http://untrusted.example'}});
  expect(csrf.status()).toBe(403);
  await page.getByRole('button',{name:'Sign out'}).click();
- await expect(page.getByRole('heading',{name:'MastaApp Pilot Sign In'})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Create your account'})).toBeVisible();
  expect((await page.request.get('/api/inventory')).status()).toBe(401);
 });

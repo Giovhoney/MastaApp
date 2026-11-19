@@ -52,6 +52,16 @@ CREATE TABLE `AppUser` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
+CREATE TABLE `PilotCredential` (
+    `userId` VARCHAR(191) NOT NULL,
+    `firstNameKey` VARCHAR(60) NOT NULL,
+    `pinHash` VARCHAR(256) NOT NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    UNIQUE INDEX `PilotCredential_firstNameKey_key`(`firstNameKey`),
+    PRIMARY KEY (`userId`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
 CREATE TABLE `InkCheckout` (
     `id` VARCHAR(191) NOT NULL,
     `batchId` VARCHAR(191) NOT NULL,
@@ -123,3 +133,5 @@ ALTER TABLE `InventoryMovement` ADD CONSTRAINT `InventoryMovement_batchId_fkey` 
 -- AddForeignKey
 ALTER TABLE `InventoryMovement` ADD CONSTRAINT `InventoryMovement_employeeId_fkey` FOREIGN KEY (`employeeId`) REFERENCES `AppUser`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
+
+ALTER TABLE `PilotCredential` ADD CONSTRAINT `PilotCredential_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `AppUser`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
