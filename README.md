@@ -58,3 +58,7 @@ Demo pails are distinct from Ink Master data. The Administration page resets the
 ## Cloud-hosted rollout status (November 2026)
 
 Cloud hosting has been selected, but no hosting account, database or production domain has been provisioned. See [docs/CLOUD-LAUNCH.md](docs/CLOUD-LAUNCH.md) for the production readiness gates. A production-mode access guard intentionally returns HTTP 503 instead of exposing the unauthenticated browser-only demo. Automated checks are configured in `.github/workflows/checks.yml` for when the repository is connected to GitHub.
+
+## Local MySQL pilot on the configured Mac
+
+Start after a reboot with `./scripts/start-local-pilot.sh` from the project folder, then open `http://localhost:3000/pilot`. MySQL 8.4.7 is installed without administrator access in `~/.local/mysql`, and its data lives at `~/.local/mysql-data`, bound only to `127.0.0.1:3307`. The private `.env.local` contains the local application credentials and is gitignored. This setup is specific to the configured Mac and does not automatically configure another machine or Hostinger. The original demo is at `/`; the MySQL-backed shared pilot is at `/pilot`. Never use pilot records as real stock.
