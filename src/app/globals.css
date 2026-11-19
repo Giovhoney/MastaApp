@@ -24,3 +24,14 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@media print {
+  @page { size: A4 portrait; margin: 14mm; }
+  body { background: white !important; color: black !important; }
+  body * { visibility: hidden !important; }
+  .placement-sheet, .placement-sheet *, .location-audit, .location-audit * { visibility: visible !important; }
+  .placement-sheet, .location-audit { position: absolute !important; inset: 0 auto auto 0 !important; width: 100% !important; padding: 0 !important; border: 0 !important; box-shadow: none !important; }
+  .placement-sheet .no-print, .location-audit .no-print { display: none !important; }
+  .placement-sheet tr, .location-audit tr { break-inside: avoid; }
+  .placement-sheet table, .location-audit table { width: 100%; }
+}

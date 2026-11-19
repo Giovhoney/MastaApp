@@ -1,36 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MastaApp — Shipmaster Ink Inventory (development prototype)
 
-## Getting Started
+A local Next.js prototype for flexographic ink inventory. **Not production-ready. Do not enter real company inventory or personal employee information.**
 
-First, run the development server:
+## Start
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000 on this Mac. Run `npm run lint`, `npm run test`, `npx tsc --noEmit`, and `npm run build` to check the code.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## What works today
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- 110 supplied Ink Master descriptions (reference catalogue, not stock quantities)
+- Two racks (A/B), three levels (LL/ML/UL), 10 partitions per level, 3 pails per partition = **180 positions**
+- Fictional `TEST-BATCH-...` pails for UI testing
+- Demo receiving, checkout, return, movement history, ink lookup, location suggestions, and reset
+- Required production order number at checkout; order number is carried into the return record, searchable in movement history and exported to CSV. Earlier demo records may have no order number.
+- Rack inventory register with search/status filters, CSV exports for inventory and movements
+- Demo transactions are stored **only in this browser's localStorage**, not in PostgreSQL and not shared with other users
+- Checkout reserves the home position; returns require a non-increasing remaining percentage
 
-## Learn More
+## PostgreSQL backend preparation (not connected yet)
 
-To learn more about Next.js, take a look at the following resources:
+`prisma/schema.prisma` describes the planned relational database. `prisma/seed.ts` will seed **only** Ink Master descriptions, rack positions and low-ink threshold; it will never seed fictional pails into the real database.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Docker Desktop is not currently installed on this Mac. Once installed:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+cp .env.example .env
+# Confirm that the local-only credentials in .env are appropriate
+# Start Docker Desktop, then:
+docker compose up -d
+npm run db:generate
+npm run db:migrate
+npm run db:seed
+```
 
-## Deploy on Vercel
+**Do not run migrations against any real company database.** The above setup is for a local development database only. Server-side inventory transaction functions are drafted in `src/server/inventory.ts` with serializable transactions and audit movements, but they are intentionally **not exposed as API endpoints** until secure user authentication, authorization, and database integration are complete. The UI still uses browser-only demo data.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Business decisions required before production
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Confirm whether the supplier Batch ID identifies **one physical pail**. If multiple pails share a production batch number, the schema must distinguish production lot from a unique pail identifier.
+2. Confirm the low-ink threshold (currently 25% in the demo).
+3. Confirm the future authentication method, permissions, and approved company hosting/security arrangements.
+4. Confirm the method for measuring remaining ink percentage and whether increases can occur through refilling or correction.
+
+## Data safety
+
+Demo pails are distinct from Ink Master data. The Administration page resets the browser demo without changing the Ink Master List. Clearing browser storage also removes local demo transactions. No real records are currently saved to a shared database.
+
+## Security and dependency status
+
+`npm audit` currently reports 4 high-severity advisories in the Prisma 6 CLI/tooling dependency chain. They must be resolved before any production deployment. Do not use `npm audit fix --force` blindly because Prisma major upgrades require schema and runtime changes.
+
+## Cloud-hosted rollout status (November 2026)
+
+Cloud hosting has been selected, but no hosting account, database or production domain has been provisioned. See [docs/CLOUD-LAUNCH.md](docs/CLOUD-LAUNCH.md) for the production readiness gates. A production-mode access guard intentionally returns HTTP 503 instead of exposing the unauthenticated browser-only demo. Automated checks are configured in `.github/workflows/checks.yml` for when the repository is connected to GitHub.

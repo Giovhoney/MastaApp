@@ -1,0 +1,20 @@
+# Optional local PostgreSQL for future backend development. Requires Docker Desktop.
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mastaapp
+      POSTGRES_PASSWORD: local_development_only
+      POSTGRES_DB: mastaapp
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - mastaapp_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mastaapp -d mastaapp"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+volumes:
+  mastaapp_pgdata:

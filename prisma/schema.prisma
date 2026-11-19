@@ -1,0 +1,122 @@
+// Planned PostgreSQL schema. Not connected to the browser demo.
+// BUSINESS GATE: verify that batchId is unique to ONE physical pail, not shared across supplier production lots.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PailStatus {
+  STORED
+  CHECKED_OUT
+  EMPTY
+  RETIRED
+}
+
+enum MovementType {
+  RECEIVE
+  CHECKOUT
+  RETURN
+  ADJUST
+  RELOCATE
+  RETIRE
+}
+
+enum UserRole {
+  ADMIN
+  INK_MANAGER
+  OPERATOR
+  CSR
+  QUALITY
+  MANAGEMENT
+}
+
+model InkMaster {
+  id          String    @id @default(cuid())
+  description String    @unique
+  colourFamily String?
+  active      Boolean   @default(true)
+  pails       InkPail[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model RackPosition {
+  code       String   @id // e.g. A-ML-04-2
+  rack       String
+  level      String
+  partition  Int
+  position   Int
+  pail       InkPail?
+  createdAt  DateTime @default(now())
+
+  @@unique([rack, level, partition, position])
+  @@index([rack, level])
+}
+
+model InkPail {
+  batchId      String      @id // permanent unique physical-pail identifier (subject to verification)
+  inkId        String
+  ink          InkMaster   @relation(fields: [inkId], references: [id])
+  locationCode String      @unique // checked-out pails retain their home location
+  location     RackPosition @relation(fields: [locationCode], references: [code])
+  remainingPct Int
+  status       PailStatus  @default(STORED)
+  receivedAt   DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  checkouts    InkCheckout[]
+  movements    InventoryMovement[]
+  @@index([inkId, status])
+}
+
+model AppUser {
+  id         String      @id @default(cuid())
+  displayName String
+  role       UserRole
+  active     Boolean     @default(true)
+  checkouts  InkCheckout[]
+  movements  InventoryMovement[]
+  createdAt  DateTime    @default(now())
+  // Authentication identity intentionally deferred.
+}
+
+model InkCheckout {
+  id           String    @id @default(cuid())
+  batchId      String
+  pail         InkPail   @relation(fields: [batchId], references: [batchId])
+  employeeId   String
+  employee     AppUser   @relation(fields: [employeeId], references: [id])
+  checkedOutAt DateTime  @default(now())
+  returnedAt   DateTime?
+  orderNumber  String
+  pctAtCheckout Int
+  pctAtReturn   Int?
+  @@index([batchId, returnedAt])
+  @@index([orderNumber])
+}
+
+model InventoryMovement {
+  id          String       @id @default(cuid())
+  batchId     String
+  pail        InkPail      @relation(fields: [batchId], references: [batchId])
+  type        MovementType
+  orderNumber String?
+  employeeId  String
+  employee    AppUser      @relation(fields: [employeeId], references: [id])
+  fromLocation String?
+  toLocation   String?
+  remainingPct Int
+  note         String?
+  createdAt    DateTime     @default(now())
+  @@index([batchId, createdAt])
+  @@index([orderNumber])
+}
+
+model SystemSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
