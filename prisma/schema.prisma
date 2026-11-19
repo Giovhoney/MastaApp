@@ -1,11 +1,11 @@
-// Planned PostgreSQL schema. Not connected to the browser demo.
+// Planned Hostinger MariaDB/MySQL schema. Not connected to the browser demo.
 // BUSINESS GATE: verify that batchId is unique to ONE physical pail, not shared across supplier production lots.
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 

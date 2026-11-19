@@ -5,7 +5,7 @@ The current UI reads/writes only browser localStorage, with unverified employee 
 
 ## Proposed architecture
 - Managed Node.js Next.js application over HTTPS, with separate staging and production environments.
-- Managed PostgreSQL (private network, TLS, backups, point-in-time recovery where available).
+- Hostinger-managed MySQL/MariaDB (TLS where supported, least-privilege credentials, independent verified backups).
 - Server-side session authentication for employee IDs plus a secure credential, or approved company SSO. Password/PIN hashes only, never plaintext.
 - Database-enforced uniqueness for physical pail IDs; supplier batch/lot tracked separately if shared by multiple pails.
 - Server-side permissions for receiving, ink master approvals, checkout/return, relocation, purge, stock adjustment and user administration. Never trust role or employee ID sent by the browser.
@@ -30,8 +30,11 @@ Health endpoint: `GET /api/health` (liveness only; not database readiness).
 
 ## Temporary database inventory for testing
 
-After a real PostgreSQL `DATABASE_URL` has been securely configured and the Prisma schema migrated, run `PILOT_DATA_CONFIRM=YES_TEST_DATA_ONLY npm run db:pilot:seed` in a secure environment. This inserts six fictional `TEST-PILOT-` pails, receipt movements, and a clearly labeled test employee. It refuses to overwrite occupied positions or seed twice.
+After a real MySQL/MariaDB `DATABASE_URL` has been securely configured and the Prisma schema migrated, run `PILOT_DATA_CONFIRM=YES_TEST_DATA_ONLY npm run db:pilot:seed` in a secure environment. This inserts six fictional `TEST-PILOT-` pails, receipt movements, and a clearly labeled test employee. It refuses to overwrite occupied positions or seed twice.
 
 Before importing actual inventory, run `PILOT_DATA_CONFIRM=YES_TEST_DATA_ONLY npm run db:pilot:clear`. It deletes **only** `TEST-PILOT-` pails and their linked transactions. It never clears real stock, ink master names, or users. The script is not an inventory import or a substitute for a transactional server API.
 
 **Database connection is not yet configured.** Never paste the PostgreSQL connection URL into a chat or commit it to GitHub; configure it as a Hostinger secret/environment variable. The current browser demo remains isolated from the database until a shared server API and employee identification are implemented.
+
+## Hostinger Business Web Hosting database choice
+The Prisma provider is now `mysql` for Hostinger MySQL/MariaDB. Provision a database in hPanel and configure `DATABASE_URL` as a secret in the Node.js app environment. **Do not enter credentials in GitHub or chat.** Schema creation requires an actual connection and the appropriate migration command; this repository does not imply the cloud database exists. Hostinger must allow the deployed Node.js runtime to connect to the chosen database host. Test connectivity before migration.

@@ -1,7 +1,7 @@
 /**
  * Temporary cloud-database fixture management.
  * Never delete real inventory. Only records with the TEST- prefix can be removed.
- * Requires explicit PILOT_DATA_CONFIRM and a configured PostgreSQL DATABASE_URL.
+ * Requires explicit PILOT_DATA_CONFIRM and a configured MySQL/MariaDB DATABASE_URL.
  */
 import { PrismaClient, Prisma } from "@prisma/client";
 import { inkNames } from "../src/data/inks";
