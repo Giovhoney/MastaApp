@@ -13,7 +13,8 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "db:pilot:seed": "tsx prisma/pilot-data.ts seed",
-    "db:pilot:clear": "tsx prisma/pilot-data.ts clear"
+    "db:pilot:clear": "tsx prisma/pilot-data.ts clear",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
@@ -23,6 +24,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "@tailwindcss/turbopack": "4.3.3",
     "@types/node": "^24.19.2",
     "@types/react": "^19",
