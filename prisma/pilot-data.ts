@@ -39,6 +39,7 @@ async function main() {
       for (const sample of samples) {
         const ink = await tx.inkMaster.findUniqueOrThrow({ where: { description: sample.inkName } });
         await tx.inkPail.create({ data: { batchId: sample.batchId, inkId: ink.id, locationCode: sample.location, remainingPct: sample.pct, status: "STORED" } });
+        await tx.pilotPailDetails.create({ data: { batchId: sample.batchId, receivingWeightKg: 20, currentWeightKg: sample.pct / 5 } });
         await tx.inventoryMovement.create({ data: { batchId: sample.batchId, employeeId: employee.id, type: "RECEIVE", toLocation: sample.location, remainingPct: sample.pct, note: "TEMPORARY PILOT TEST DATA — NOT REAL STOCK" } });
       }
       console.log(`Inserted ${samples.length} fictional TEST-PILOT pails and matching receipt movements.`);
@@ -46,6 +47,7 @@ async function main() {
       const ids = (await tx.inkPail.findMany({ where: { batchId: { startsWith: TEST_PREFIX } }, select: { batchId: true } })).map(p => p.batchId);
       await tx.inventoryMovement.deleteMany({ where: { batchId: { in: ids } } });
       await tx.inkCheckout.deleteMany({ where: { batchId: { in: ids } } });
+      await tx.pilotPailDetails.deleteMany({ where: { batchId: { in: ids } } });
       await tx.inkPail.deleteMany({ where: { batchId: { in: ids } } });
       console.log(`Cleared ${ids.length} TEST-PILOT pails and their transaction history. Real inventory and master data untouched.`);
     }

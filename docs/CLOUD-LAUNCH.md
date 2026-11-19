@@ -38,3 +38,11 @@ Before importing actual inventory, run `PILOT_DATA_CONFIRM=YES_TEST_DATA_ONLY np
 
 ## Hostinger Business Web Hosting database choice
 The Prisma provider is now `mysql` for Hostinger MySQL/MariaDB. Provision a database in hPanel and configure `DATABASE_URL` as a secret in the Node.js app environment. **Do not enter credentials in GitHub or chat.** Schema creation requires an actual connection and the appropriate migration command; this repository does not imply the cloud database exists. Hostinger must allow the deployed Node.js runtime to connect to the chosen database host. Test connectivity before migration.
+
+## Shared MySQL pilot (implemented; deployment gated)
+
+The dedicated `/pilot` interface reads and writes `/api/pilot` using MySQL, and refreshes every five seconds. It supports TEST-prefixed pail receiving, checkout, return by weight, relocation, purge, and transaction history. Operations run in serializable Prisma transactions. It uses Employee ID + Name for attribution **only**; it does not provide authentication, and must not be used for real stock. The main demo `/` remains blocked in production.
+
+**To activate after the actual MySQL database exists:** configure the secret `DATABASE_URL`, apply the schema to the empty pilot database (`npx prisma db push` using an authorized database connection), then run `PILOT_DATA_CONFIRM=YES_TEST_DATA_ONLY npm run db:pilot:seed`. Only after checking DB connectivity and pilot data, set `ENABLE_PILOT=true` in the Hostinger Node.js environment and redeploy. The URL will be `/pilot`, not `/`. Never expose the full connection URL in chat, source code, or logs.
+
+Before real stock, disable the pilot, back up and clear the TEST-prefixed records, add proper access controls and production-grade stock identification, and implement the remaining production workflows. The pilot intentionally does not expose a public reset endpoint.

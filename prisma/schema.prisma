@@ -120,3 +120,12 @@ model SystemSetting {
   value     String
   updatedAt DateTime @updatedAt
 }
+
+// Temporary pilot-specific metadata. Never used to represent verified real stock.
+model PilotPailDetails {
+  batchId String @id
+  receivingWeightKg Float
+  currentWeightKg Float
+  machine String?
+  updatedAt DateTime @updatedAt
+}
