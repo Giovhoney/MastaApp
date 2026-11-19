@@ -61,8 +61,8 @@ model InkPail {
   batchId      String      @id // permanent unique physical-pail identifier (subject to verification)
   inkId        String
   ink          InkMaster   @relation(fields: [inkId], references: [id])
-  locationCode String      @unique // checked-out pails retain their home location
-  location     RackPosition @relation(fields: [locationCode], references: [code])
+  locationCode String?     @unique // retired pails release their rack slot
+  location     RackPosition? @relation(fields: [locationCode], references: [code])
   remainingPct Int
   status       PailStatus  @default(STORED)
   receivedAt   DateTime    @default(now())

@@ -29,7 +29,7 @@ CREATE TABLE `RackPosition` (
 CREATE TABLE `InkPail` (
     `batchId` VARCHAR(191) NOT NULL,
     `inkId` VARCHAR(191) NOT NULL,
-    `locationCode` VARCHAR(191) NOT NULL,
+    `locationCode` VARCHAR(191) NULL,
     `remainingPct` INTEGER NOT NULL,
     `status` ENUM('STORED', 'CHECKED_OUT', 'EMPTY', 'RETIRED') NOT NULL DEFAULT 'STORED',
     `receivedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),

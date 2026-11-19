@@ -1,10 +1,12 @@
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { currentUser } from "@/lib/pilot-auth";
 
 const prisma = new PrismaClient();
 // Deliberately pilot-only. No authentication has been implemented.
 export async function GET() {
   if (process.env.ENABLE_PILOT !== "true" || !process.env.DATABASE_URL) return NextResponse.json({ error: "Shared inventory not enabled" }, { status: 503 });
+  if (!(await currentUser())) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   try {
     const [pails, movements, details] = await Promise.all([
       prisma.inkPail.findMany({ where: { batchId: { startsWith: "TEST-" } }, include: { ink: true }, orderBy: { locationCode: "asc" } }),
@@ -13,7 +15,7 @@ export async function GET() {
     ]);
     const detailMap = new Map(details.map(d => [d.batchId, d]));
     const data = {
-      pails: pails.map(p => ({ batchId: p.batchId, inkName: p.ink.description, location: p.locationCode, remainingPct: p.remainingPct, checkedOut: p.status === "CHECKED_OUT", purged: p.status === "RETIRED", demo: true as const, receivingWeightKg: detailMap.get(p.batchId)?.receivingWeightKg, currentWeightKg: detailMap.get(p.batchId)?.currentWeightKg })),
+      pails: pails.map(p => ({ batchId: p.batchId, inkName: p.ink.description, location: p.locationCode ?? "", remainingPct: p.remainingPct, checkedOut: p.status === "CHECKED_OUT", purged: p.status === "RETIRED", demo: true as const, receivingWeightKg: detailMap.get(p.batchId)?.receivingWeightKg, currentWeightKg: detailMap.get(p.batchId)?.currentWeightKg })),
       movements: movements.map(m => {
         const action = m.type === "RELOCATE" ? "MOVE" : m.type === "RETIRE" ? "PURGE" : m.type;
         const note = m.note ?? "";

@@ -1,11 +1,11 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { locations } from "@/data/demo-store";
+import { currentUser, sameOrigin } from "@/lib/pilot-auth";
 
 const db = new PrismaClient();
 const prefix = "TEST-";
-const employeeSchema = z.object({ employeeId: z.string().trim().min(2).max(50), employeeName: z.string().trim().min(2).max(100) });
-const commandSchema = employeeSchema.extend({
+const commandSchema = z.object({
   action: z.enum(["RECEIVE", "CHECKOUT", "RETURN", "MOVE", "PURGE"]),
   batchId: z.string().trim().min(5).max(100).refine(v => v.startsWith(prefix), "Only TEST- pails are permitted in pilot mode"),
   inkName: z.string().trim().max(120).optional(),
@@ -16,9 +16,11 @@ const commandSchema = employeeSchema.extend({
   reason: z.string().trim().max(500).optional(),
 });
 function enabled() { return process.env.ENABLE_PILOT === "true" && !!process.env.DATABASE_URL; }
+const bulkSchema = z.object({ action: z.literal("RECEIVE_BULK"), lines: z.array(commandSchema.pick({batchId:true, inkName:true, location:true, weightKg:true})).min(1).max(180) });
 function failure(message: string, status = 400) { return Response.json({ error: message }, { status, headers: { "Cache-Control": "no-store" } }); }
 export async function GET() {
   if (!enabled()) return failure("Shared pilot is not configured", 503);
+  if (!(await currentUser())) return failure("Authentication required", 401);
   try {
     const pails = await db.inkPail.findMany({ where: { batchId: { startsWith: prefix } }, include: { ink: true }, orderBy: { locationCode: "asc" } });
     const ids = pails.map(p => p.batchId);
@@ -32,12 +34,20 @@ export async function GET() {
 }
 export async function POST(request: Request) {
   if (!enabled()) return failure("Shared pilot is not configured", 503);
-  let payload: z.infer<typeof commandSchema>;
-  try { payload = commandSchema.parse(await request.json()); } catch (error) { return failure(error instanceof z.ZodError ? error.issues[0]?.message ?? "Invalid input" : "Invalid JSON"); }
-  const p = payload;
+  const actor = await currentUser();
+  if (!actor) return failure("Authentication required", 401);
+  if (!sameOrigin(request)) return failure("Origin rejected", 403);
+  const input = await request.json().catch(() => null);
+  const parsed = z.union([commandSchema, bulkSchema]).safeParse(input);
+  if (!parsed.success) return failure(parsed.error.issues[0]?.message ?? "Invalid input");
+  const payload = parsed.data;
+  const lines = payload.action === "RECEIVE_BULK" ? payload.lines.map(line => ({...line, action: "RECEIVE" as const})) : [payload];
+  if (new Set(lines.map(line => line.batchId)).size !== lines.length) return failure("Duplicate pail IDs in receipt", 409);
+  if (payload.action === "RECEIVE_BULK" && new Set(lines.map(line => line.location)).size !== lines.length) return failure("Duplicate rack positions in receipt", 409);
   try {
     await db.$transaction(async tx => {
-      const user = await tx.appUser.upsert({ where: { id: p.employeeId }, create: { id: p.employeeId, displayName: p.employeeName, role: "OPERATOR" }, update: { displayName: p.employeeName } });
+      const user = await tx.appUser.upsert({ where: { id: actor.employeeId }, create: { id: actor.employeeId, displayName: actor.employeeName, role: "OPERATOR" }, update: { displayName: actor.employeeName } });
+      for (const p of lines) {
       const existing = await tx.inkPail.findUnique({ where: { batchId: p.batchId } });
       if (p.action === "RECEIVE") {
         if (existing) throw Error("Pail ID already exists");
@@ -52,7 +62,7 @@ export async function POST(request: Request) {
         await tx.inkPail.create({ data: { batchId: p.batchId, inkId: ink.id, locationCode: p.location, remainingPct: 100, status: "STORED" } });
         await tx.pilotPailDetails.create({ data: { batchId: p.batchId, receivingWeightKg: p.weightKg, currentWeightKg: p.weightKg } });
         await tx.inventoryMovement.create({ data: { batchId: p.batchId, employeeId: user.id, type: "RECEIVE", toLocation: p.location, remainingPct: 100, note: "TEST DATA" } });
-        return;
+        continue;
       }
       if (!existing) throw Error("Test pail not found");
       const details = await tx.pilotPailDetails.findUnique({ where: { batchId: p.batchId } });
@@ -85,10 +95,11 @@ export async function POST(request: Request) {
       } else {
         if (existing.status === "CHECKED_OUT" || existing.status === "RETIRED") throw Error("Pail must be returned and active before purge");
         if (!p.reason) throw Error("Purge reason required");
-        await tx.inkPail.update({ where: { batchId: p.batchId }, data: { status: "RETIRED" } });
+        await tx.inkPail.update({ where: { batchId: p.batchId }, data: { status: "RETIRED", locationCode: null } });
         await tx.inventoryMovement.create({ data: { batchId: p.batchId, employeeId: user.id, type: "RETIRE", fromLocation: existing.locationCode, remainingPct: existing.remainingPct, note: `TEST PURGE: ${p.reason}` } });
       }
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 });
+      }
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 30000 });
     return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return failure("Pail or rack position was already assigned. Refresh and retry.", 409);
