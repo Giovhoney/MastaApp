@@ -81,8 +81,8 @@ export default function Home() {
   const inkNames = allInkNames(state);
   const alerts = reorderAlerts(state);
   const purgedMovements = state.movements.filter(m => m.action === "PURGE").sort((a,b) => b.at.localeCompare(a.at));
-  const filteredPurges = purgedMovements.filter(m => [m.batchId, pails.find(p=>p.batchId===m.batchId)?.inkName ?? "", m.employee, m.reason ?? "", m.location, String(m.remainingPct)].some(v => v.toLowerCase().includes(purgeLookup.trim().toLowerCase())));
   const pails = state.pails;
+  const filteredPurges = purgedMovements.filter(m => [m.batchId, pails.find(p=>p.batchId===m.batchId)?.inkName ?? "", m.employee, m.reason ?? "", m.location, String(m.remainingPct)].some(v => v.toLowerCase().includes(purgeLookup.trim().toLowerCase())));
   const activePails = pails.filter(p => !p.purged);
   const auditPails = [...activePails].filter(p => auditRack === "All" || p.location.startsWith(auditRack + "-")).sort((a, b) => a.location.localeCompare(b.location));
   const stockSummary = summarizeInkStock(activePails);
