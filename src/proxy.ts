@@ -13,4 +13,4 @@ export function proxy(request: Request) {
   return NextResponse.next();
 }
 
-export const config = { matcher: ["/((?!_next/static|_next/image|favicon.ico|api/health|api/pilot).*)"] };
+export const config = { matcher: ["/((?!_next/static|_next/image|favicon.ico|api/health|api/pilot|api/inventory).*)"] };
