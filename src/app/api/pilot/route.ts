@@ -1,7 +1,8 @@
+import { authorizedActor, type Action } from "@/lib/permissions";
 import { Prisma, PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { locations } from "@/data/demo-store";
-import { verifyActor, sameOrigin, validFirstName, validPin } from "@/lib/pilot-auth";
+import { sameOrigin, validFirstName, validPin } from "@/lib/pilot-auth";
 
 const db = new PrismaClient();
 const prefix = "TEST-";
@@ -18,6 +19,7 @@ const commandSchema = z.object({
   reason: z.string().trim().max(500).optional(),
 });
 function enabled() { return process.env.ENABLE_PILOT === "true" && !!process.env.DATABASE_URL; }
+const stockRuleSchema = z.object({ action: z.literal("STOCK_THRESHOLD"), inkName: z.string().trim().min(1).max(120), minimumPails: z.number().int().min(0).max(10000) });
 const bulkSchema = z.object({ action: z.literal("RECEIVE_BULK"), lines: z.array(commandSchema.pick({batchId:true, inkName:true, location:true, weightKg:true})).min(1).max(180) });
 function failure(message: string, status = 400) { return Response.json({ error: message }, { status, headers: { "Cache-Control": "no-store" } }); }
 export async function GET() {
@@ -37,18 +39,31 @@ export async function POST(request: Request) {
   if (!enabled()) return failure("Shared pilot is not configured", 503);
   if (!sameOrigin(request)) return failure("Origin rejected", 403);
   const input = await request.json().catch(() => null);
-  const parsed = z.union([commandSchema, bulkSchema]).safeParse(input);
+  const parsed = z.union([commandSchema, bulkSchema, stockRuleSchema]).safeParse(input);
   const firstName = input?.firstName;
   const pin = input?.pin;
   if (typeof firstName !== "string" || typeof pin !== "string" || !validFirstName(firstName) || !validPin(pin)) return failure("Enter your first name and 6-digit PIN", 401);
   const key = firstName.trim().toLocaleLowerCase("en");
   const attempt = attempts.get(key);
   if (attempt && attempt.until > Date.now() && attempt.count >= 5) return failure("Too many PIN attempts. Try again in 15 minutes.", 429);
-  const actor = await verifyActor(firstName, pin);
-  if (!actor) { attempts.set(key, { count: (attempt && attempt.until > Date.now() ? attempt.count : 0) + 1, until: Date.now() + WINDOW }); return failure("Incorrect first name or PIN", 401); }
-  attempts.delete(key);
   if (!parsed.success) return failure(parsed.error.issues[0]?.message ?? "Invalid input");
   const payload = parsed.data;
+  const permissionAction: Action = payload.action === "RECEIVE_BULK" ? "RECEIVE" : payload.action;
+  const authorization = await authorizedActor(firstName, pin, permissionAction);
+  if ('error' in authorization) {
+    if (authorization.status === 401) attempts.set(key, { count: (attempt && attempt.until > Date.now() ? attempt.count : 0) + 1, until: Date.now() + WINDOW });
+    return failure(authorization.error ?? "Unauthorized", authorization.status);
+  }
+  attempts.delete(key);
+  const { actor } = authorization;
+  if (payload.action === "STOCK_THRESHOLD") {
+    try {
+      const ink = await db.inkMaster.findUnique({ where: { description: payload.inkName } });
+      if (!ink) return failure("Choose an ink from the master list");
+      await db.systemSetting.upsert({ where: { key: `stock-min:${ink.id}` }, create: { key: `stock-min:${ink.id}`, value: String(payload.minimumPails) }, update: { value: String(payload.minimumPails) } });
+      return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
+    } catch { return failure("Could not save stock minimum", 503); }
+  }
   const lines = payload.action === "RECEIVE_BULK" ? payload.lines.map(line => ({...line, action: "RECEIVE" as const})) : [payload];
   if (new Set(lines.map(line => line.batchId)).size !== lines.length) return failure("Duplicate pail IDs in receipt", 409);
   if (payload.action === "RECEIVE_BULK" && new Set(lines.map(line => line.location)).size !== lines.length) return failure("Duplicate rack positions in receipt", 409);

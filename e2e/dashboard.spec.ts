@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { openDashboard } from './helpers';
-const sections = ['Dashboard','Rack Inventory','Ink Lookup','Checkout & Return','Receive Ink','Placement Sheet','Location Audit','Ink Master List','Ink Request Review','Movement History','Order Ink Usage','Ink Machine History','Pail History','Purged Ink Register','Reorder Alerts','Administration'];
+const sections = ['Dashboard','Rack Inventory','Ink Lookup','Checkout & Return','Receive Ink','Placement Sheet','Location Audit','Ink Master List','Ink Request Review','Movement History','Order Ink Usage','Ink Machine History','Pail History','Purged Ink Register','Stock Alerts','Administration','Employee Master List'];
 test('original dashboard loads shared MySQL stock and every navigation page without browser errors', async ({ page }) => {
  const errors:string[]=[];page.on('pageerror', e => errors.push(e.message));
  await openDashboard(page);

@@ -1,0 +1,12 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "MastaApp: Ensure MySQL",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/ensure-local-mysql.sh",
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent", "panel": "dedicated", "close": true }
+    }
+  ]
+}

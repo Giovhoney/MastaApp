@@ -6,13 +6,17 @@ const prisma = new PrismaClient();
 export async function GET() {
   if (process.env.ENABLE_PILOT !== "true" || !process.env.DATABASE_URL) return NextResponse.json({ error: "Shared inventory not enabled" }, { status: 503 });
   try {
-    const [pails, movements, details] = await Promise.all([
+    const [pails, movements, details, rules, masterInks] = await Promise.all([
       prisma.inkPail.findMany({ where: { batchId: { startsWith: "TEST-" } }, include: { ink: true }, orderBy: { locationCode: "asc" } }),
       prisma.inventoryMovement.findMany({ where: { batchId: { startsWith: "TEST-" } }, include: { employee: true }, orderBy: { createdAt: "asc" } }),
       prisma.pilotPailDetails.findMany({ where: { batchId: { startsWith: "TEST-" } } }),
+      prisma.systemSetting.findMany({ where: { key: { startsWith: "stock-min:" } } }),
+      prisma.inkMaster.findMany({ select: { id: true, description: true } }),
     ]);
     const detailMap = new Map(details.map(d => [d.batchId, d]));
     const data = {
+      stockMinimums: rules.filter(r => /^\d+$/.test(r.value)).map(r => ({ inkId: r.key.slice(10), minimumPails: Number(r.value) })),
+      inkIds: masterInks,
       pails: pails.map(p => ({ batchId: p.batchId, inkName: p.ink.description, location: p.locationCode ?? "", remainingPct: p.remainingPct, checkedOut: p.status === "CHECKED_OUT", purged: p.status === "RETIRED", demo: true as const, receivingWeightKg: detailMap.get(p.batchId)?.receivingWeightKg, currentWeightKg: detailMap.get(p.batchId)?.currentWeightKg })),
       movements: movements.map(m => {
         const action = m.type === "RELOCATE" ? "MOVE" : m.type === "RETIRE" ? "PURGE" : m.type;
