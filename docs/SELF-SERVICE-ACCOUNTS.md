@@ -1,7 +1,0 @@
-# MastaApp local pilot accounts
-
-The original MastaApp dashboard now provides self-service **Create account** and **Sign in** views. A user chooses a first name and a private six-digit numeric PIN. Registration immediately creates an active operator account in MySQL and signs the user in. Returning users sign in using the same name and PIN. First names are unique case-insensitively: if two staff members share a first name, one must use a distinct name (for example, a first name plus initial). PINs are salted and hashed with scrypt and never stored in plaintext. Sessions are signed, HTTP-only and expire after eight hours; API actions are attributed to the authenticated account. No pre-generated user account is needed.
-
-**Limitations:** A six-digit PIN and first name are suitable only for this local, fictional-data pilot. For real deployment add centralized persistent rate limiting, a managed account recovery process, roles/approval for registration, individual account administration, HTTPS, and security review. Open registration is not suitable for an internet-exposed production service. The existing production guard remains in place.
-
-The old one-account `PILOT_USER_ID`, `PILOT_USER_NAME`, `PILOT_PASSWORD` environment variables and desktop credential file are no longer used. Keep `PILOT_AUTH_SECRET` and `DATABASE_URL` private in `.env.local`. `PilotCredential` was added to the MySQL schema without deleting existing sample inventory.

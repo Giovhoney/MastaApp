@@ -1,10 +1,12 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { locations } from "@/data/demo-store";
-import { currentUser, sameOrigin } from "@/lib/pilot-auth";
+import { verifyActor, sameOrigin, validFirstName, validPin } from "@/lib/pilot-auth";
 
 const db = new PrismaClient();
 const prefix = "TEST-";
+const attempts = new Map<string, { count: number; until: number }>();
+const WINDOW = 15 * 60 * 1000;
 const commandSchema = z.object({
   action: z.enum(["RECEIVE", "CHECKOUT", "RETURN", "MOVE", "PURGE"]),
   batchId: z.string().trim().min(5).max(100).refine(v => v.startsWith(prefix), "Only TEST- pails are permitted in pilot mode"),
@@ -20,7 +22,6 @@ const bulkSchema = z.object({ action: z.literal("RECEIVE_BULK"), lines: z.array(
 function failure(message: string, status = 400) { return Response.json({ error: message }, { status, headers: { "Cache-Control": "no-store" } }); }
 export async function GET() {
   if (!enabled()) return failure("Shared pilot is not configured", 503);
-  if (!(await currentUser())) return failure("Authentication required", 401);
   try {
     const pails = await db.inkPail.findMany({ where: { batchId: { startsWith: prefix } }, include: { ink: true }, orderBy: { locationCode: "asc" } });
     const ids = pails.map(p => p.batchId);
@@ -34,11 +35,18 @@ export async function GET() {
 }
 export async function POST(request: Request) {
   if (!enabled()) return failure("Shared pilot is not configured", 503);
-  const actor = await currentUser();
-  if (!actor) return failure("Authentication required", 401);
   if (!sameOrigin(request)) return failure("Origin rejected", 403);
   const input = await request.json().catch(() => null);
   const parsed = z.union([commandSchema, bulkSchema]).safeParse(input);
+  const firstName = input?.firstName;
+  const pin = input?.pin;
+  if (typeof firstName !== "string" || typeof pin !== "string" || !validFirstName(firstName) || !validPin(pin)) return failure("Enter your first name and 6-digit PIN", 401);
+  const key = firstName.trim().toLocaleLowerCase("en");
+  const attempt = attempts.get(key);
+  if (attempt && attempt.until > Date.now() && attempt.count >= 5) return failure("Too many PIN attempts. Try again in 15 minutes.", 429);
+  const actor = await verifyActor(firstName, pin);
+  if (!actor) { attempts.set(key, { count: (attempt && attempt.until > Date.now() ? attempt.count : 0) + 1, until: Date.now() + WINDOW }); return failure("Incorrect first name or PIN", 401); }
+  attempts.delete(key);
   if (!parsed.success) return failure(parsed.error.issues[0]?.message ?? "Invalid input");
   const payload = parsed.data;
   const lines = payload.action === "RECEIVE_BULK" ? payload.lines.map(line => ({...line, action: "RECEIVE" as const})) : [payload];

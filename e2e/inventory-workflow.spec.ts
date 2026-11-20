@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { PrismaClient } from '@prisma/client';
-import { signIn } from './helpers';
+import { loadEnvConfig } from '@next/env';
+loadEnvConfig(process.cwd());
+import { createTestAccount } from './helpers';
 import { locations } from '../src/data/demo-store';
 
 test('authenticated atomic receiving, checkout, return, move, purge, and rack reuse',async({page,request})=>{
@@ -8,10 +10,10 @@ test('authenticated atomic receiving, checkout, return, move, purge, and rack re
  const suffix=Date.now().toString(36).toUpperCase();
  const ids=[`TEST-E2E-${suffix}-A`,`TEST-E2E-${suffix}-B`,`TEST-E2E-${suffix}-C`];
  try {
-  const denied=await request.get('/api/inventory');expect(denied.status()).toBe(401);
-  const name=await signIn(page);
+  const publicRead=await request.get('/api/inventory');expect(publicRead.status()).toBe(200);
+  const name=await createTestAccount(page);
   const api=page.request;
-  const post=async(data:unknown)=>api.post('/api/pilot',{data,headers:{origin:'http://localhost:3000'}});
+  const post=async(data:Record<string,unknown>)=>api.post('/api/pilot',{data:{...data,firstName:name,pin:'849263'},headers:{origin:'http://localhost:3000'}});
   const inventory=await (await api.get('/api/inventory')).json();
   const used=new Set(inventory.pails.map((p:{location:string})=>p.location));
   const free=locations.filter(loc=>!used.has(loc));expect(free.length).toBeGreaterThan(2);

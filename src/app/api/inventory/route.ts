@@ -1,12 +1,10 @@
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { currentUser } from "@/lib/pilot-auth";
 
 const prisma = new PrismaClient();
-// Deliberately pilot-only. No authentication has been implemented.
+// Read-only fictional inventory is accessible without a login.
 export async function GET() {
   if (process.env.ENABLE_PILOT !== "true" || !process.env.DATABASE_URL) return NextResponse.json({ error: "Shared inventory not enabled" }, { status: 503 });
-  if (!(await currentUser())) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   try {
     const [pails, movements, details] = await Promise.all([
       prisma.inkPail.findMany({ where: { batchId: { startsWith: "TEST-" } }, include: { ink: true }, orderBy: { locationCode: "asc" } }),
